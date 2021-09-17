@@ -410,6 +410,28 @@ public class DatabaseSessionStoreManager
 
     @DigdagTimed(value = "dssm_", category = "db", appendMethodName = true)
     @Override
+    public List<Long> findDirectParentsOfBlockedTasksWithAccountFilter(long lastId, String accountFilter)
+    {
+        return autoCommit((handle, dao) ->
+                handle.createQuery(
+                                "select distinct parent_id" +
+                                        " from tasks t" +
+                                        " join session_attempts a on t.attempt_id = a.id" +
+                                        " where parent_id > :lastId" +
+                                        " and state = " + TaskStateCode.BLOCKED_CODE +
+                                        " and " + accountFilter +
+                                        " order by parent_id" +
+                                        " limit :limit"
+                        )
+                        .bind("lastId", lastId)
+                        .bind("limit", 100)
+                        .mapTo(Long.class)
+                        .list()
+        );
+    }
+
+    @DigdagTimed(value = "dssm_", category = "db", appendMethodName = true)
+    @Override
     public boolean requestCancelAttempt(long attemptId)
     {
         return transaction((handle, dao) -> {

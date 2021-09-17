@@ -64,8 +64,11 @@ public interface SessionStoreManager
     // for WorkflowExecutorManager.propagateSessionArchive
     List<TaskAttemptSummary> findRootTasksByStates(TaskStateCode[] states, long lastId);
 
-    // for WorkflowExecutorManager.propagateBlockedChildrenToReady
+    // for WorkflowExecutor.propagateBlockedChildrenToReady
     List<Long> findDirectParentsOfBlockedTasks(long lastId);
+
+    // for WorkflowExecutor.propagateBlockedChildrenToReady
+    List<Long> findDirectParentsOfBlockedTasksWithAccountFilter(long lastId, String acntFilter);
 
     boolean requestCancelAttempt(long attemptId);
 

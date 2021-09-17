@@ -36,6 +36,8 @@ import io.digdag.core.session.TaskAttemptSummary;
 import io.digdag.core.session.TaskStateCode;
 import io.digdag.core.session.TaskStateFlags;
 import io.digdag.metrics.DigdagTimed;
+import io.digdag.spi.AccountRouting;
+import io.digdag.spi.AccountRoutingFactory;
 import io.digdag.spi.TaskQueueLock;
 import io.digdag.spi.TaskRequest;
 import io.digdag.spi.TaskResult;
@@ -174,7 +176,8 @@ public class WorkflowExecutor
     private final Config systemConfig;
     private final Limits limits;
     private final DigdagMetrics metrics;
-
+    private final AccountRoutingFactory acrouteFactory;
+    private final AccountRouting accountRouting;
     private final Lock propagatorLock = new ReentrantLock();
     private final Condition propagatorCondition = propagatorLock.newCondition();
     private volatile boolean propagatorNotice = false;
@@ -192,7 +195,8 @@ public class WorkflowExecutor
             ObjectMapper archiveMapper,
             Config systemConfig,
             Limits limits,
-            DigdagMetrics metrics)
+            DigdagMetrics metrics,
+            AccountRoutingFactory acrouteFactory)
     {
         this.rm = rm;
         this.sm = sm;
@@ -204,6 +208,8 @@ public class WorkflowExecutor
         this.systemConfig = systemConfig;
         this.limits = limits;
         this.metrics = metrics;
+        this.acrouteFactory = acrouteFactory;
+        this.accountRouting = acrouteFactory.newAccountRouting(AccountRouting.ModuleType.EXECUTOR);
         this.enqueueRandomFetch = systemConfig.get("executor.enqueue_random_fetch", Boolean.class, false);
         this.enqueueFetchSize = systemConfig.get("executor.enqueue_fetch_size", Integer.class, 100);
     }
@@ -608,7 +614,12 @@ public class WorkflowExecutor
         long lastParentId = 0;
         while (true) {
             long finalLastParentId = lastParentId;
-            List<Long> parentIds = tm.begin(() -> sm.findDirectParentsOfBlockedTasks(finalLastParentId));
+            String acrouteFilter = accountRouting.getFilterSQL();
+            logger.debug("YY account routing: {}", acrouteFilter);
+
+            List<Long> parentIds = tm.begin(() -> accountRouting.enabled() ?
+                    sm.findDirectParentsOfBlockedTasksWithAccountFilter(finalLastParentId, acrouteFilter) :
+                    sm.findDirectParentsOfBlockedTasks(finalLastParentId));
 
             if (parentIds.isEmpty()) {
                 break;
