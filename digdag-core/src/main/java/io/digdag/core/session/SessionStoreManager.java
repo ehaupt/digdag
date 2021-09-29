@@ -68,11 +68,13 @@ public interface SessionStoreManager
     List<Long> findDirectParentsOfBlockedTasks(long lastId);
 
     // for WorkflowExecutor.propagateBlockedChildrenToReady
-    List<Long> findDirectParentsOfBlockedTasksWithAccountFilter(long lastId, String acntFilter);
+    List<Long> findDirectParentsOfBlockedTasksWithAccountFilter(long lastId, String accountFilter);
 
     boolean requestCancelAttempt(long attemptId);
 
     int trySetRetryWaitingToReady();
+
+    int trySetRetryWaitingToReadyWithAccountFilter(String accountFilter);
 
     interface TaskLockAction <T>
     {

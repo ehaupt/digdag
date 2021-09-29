@@ -412,14 +412,15 @@ public class DatabaseSessionStoreManager
     @Override
     public List<Long> findDirectParentsOfBlockedTasksWithAccountFilter(long lastId, String accountFilter)
     {
+        logger.info("YY findDirectParentsOfBlockedTasksWithAccountFilter: {}", accountFilter);
         return autoCommit((handle, dao) ->
                 handle.createQuery(
                                 "select distinct parent_id" +
                                         " from tasks t" +
-                                        " join session_attempts a on t.attempt_id = a.id" +
                                         " where parent_id > :lastId" +
                                         " and state = " + TaskStateCode.BLOCKED_CODE +
-                                        " and " + accountFilter +
+                                        " and exists ( select site_id from session_attempts a where t.attempt_id = a.id" +
+                                        "   and " + accountFilter + " )" +
                                         " order by parent_id" +
                                         " limit :limit"
                         )
@@ -480,6 +481,14 @@ public class DatabaseSessionStoreManager
     public int trySetRetryWaitingToReady()
     {
         return autoCommit((handle, dao) -> dao.trySetRetryWaitingToReady());
+    }
+
+    @DigdagTimed(value = "dssm_", category = "db", appendMethodName = true)
+    @Override
+    public int trySetRetryWaitingToReadyWithAccountFilter(String accountFilter)
+    {
+        logger.info("yy trySetRetryWaitingToReadyWithAccountFilter: {}", accountFilter);
+        return autoCommit((handle, dao) -> dao.trySetRetryWaitingToReadyWithAccountFilter(accountFilter));
     }
 
     @DigdagTimed(value = "dssm_", category = "db", appendMethodName = true)
@@ -2247,6 +2256,14 @@ public class DatabaseSessionStoreManager
                 " where state in (" + TaskStateCode.RETRY_WAITING_CODE +"," + TaskStateCode.GROUP_RETRY_WAITING_CODE + ")" +
                 " and retry_at \\<= now()")
         int trySetRetryWaitingToReady();
+
+        @SqlUpdate("update tasks" +
+                " set updated_at = now(), retry_at = NULL, state = " + TaskStateCode.READY_CODE +
+                " where state in (" + TaskStateCode.RETRY_WAITING_CODE +"," + TaskStateCode.GROUP_RETRY_WAITING_CODE + ")" +
+                " and retry_at \\<= now()" +
+                " and exists ( select site_id from session_attempts a where tasks.attempt_id = a.id" +
+                "   and <accountFilter> )" )
+        int trySetRetryWaitingToReadyWithAccountFilter(@Define("accountFilter") String accountFilter);
 
         @SqlQuery("select * from session_monitors" +
                 " where next_run_time \\<= :currentTime" +

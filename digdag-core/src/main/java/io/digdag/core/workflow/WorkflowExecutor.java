@@ -890,7 +890,12 @@ public class WorkflowExecutor
     @DigdagTimed(category = "executor", appendMethodName = true)
     protected boolean retryRetryWaitingTasks()
     {
-        return tm.begin(() -> sm.trySetRetryWaitingToReady() > 0);
+        return tm.begin(() -> {
+            int updated = accountRouting.enabled() ?
+                    sm.trySetRetryWaitingToReadyWithAccountFilter(accountRouting.getFilterSQL()) :
+                    sm.trySetRetryWaitingToReady();
+            return updated > 0;
+        });
     }
 
     private class TaskQueuer
