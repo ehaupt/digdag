@@ -957,7 +957,8 @@ public class WorkflowExecutor
     @DigdagTimed(category = "executor", appendMethodName = true)
     protected void enqueueReadyTasks(TaskQueuer queuer)
     {
-        List<Long> readyTaskIds = tm.begin(() -> sm.findAllReadyTaskIds(enqueueFetchSize, enqueueRandomFetch));
+        Optional<String> accountFilter = accountRouting.enabled() ? Optional.of(accountRouting.getFilterSQL()) : Optional.absent();
+        List<Long> readyTaskIds = tm.begin(() -> sm.findAllReadyTaskIds(enqueueFetchSize, enqueueRandomFetch, accountFilter));
         logger.trace("readyTaskIds:{}", readyTaskIds);
         for (long taskId : readyTaskIds) {  // TODO randomize this result to achieve concurrency
             catching(()->funcEnqueueTask().apply(taskId), true, "Failed to call enqueueTask. taskId:" + taskId);

@@ -285,13 +285,15 @@ public class DatabaseSessionStoreManager
 
     @DigdagTimed(value = "dssm_", category = "db", appendMethodName = true)
     @Override
-    public List<Long> findAllReadyTaskIds(int maxEntries, boolean randomFetch)
+    public List<Long> findAllReadyTaskIds(int maxEntries, boolean randomFetch, Optional<String> accountFilter)
     {
-        if (randomFetch) {
-            return autoCommit((handle, dao) -> dao.findAllTaskIdsByStateAtRandom(TaskStateCode.READY.get(), maxEntries));
+        String randomClause = randomFetch ? "order by random()" : "";
+
+        if (accountFilter.isPresent()) {
+            return autoCommit((handle, dao) -> dao.findAllTaskIdsByStateWithAccountFilter(TaskStateCode.READY.get(), maxEntries, randomClause, accountFilter.get()));
         }
         else {
-            return autoCommit((handle, dao) -> dao.findAllTaskIdsByState(TaskStateCode.READY.get(), maxEntries));
+            return autoCommit((handle, dao) -> dao.findAllTaskIdsByState(TaskStateCode.READY.get(), maxEntries, randomClause));
         }
     }
 
@@ -1756,10 +1758,6 @@ public class DatabaseSessionStoreManager
                 " where id = :id" +
                 " for update")
         Long lockTaskIfNotLocked(@Bind("id") long taskId);
-
-        @SqlQuery("select id from tasks where state = :state order by random() limit :limit")
-        List<Long> findAllTaskIdsByStateAtRandom(@Bind("state") short state, @Bind("limit") int limit);
-
     }
 
     @UseStringTemplate3StatementLocator
@@ -1821,9 +1819,6 @@ public class DatabaseSessionStoreManager
                 " where id = :id" +
                 " for update skip locked")
         Long lockTaskIfNotLocked(@Bind("id") long taskId);
-
-        @SqlQuery("select id from tasks where state = :state order by random() limit :limit")
-        List<Long> findAllTaskIdsByStateAtRandom(@Bind("state") short state, @Bind("limit") int limit);
     }
 
     public interface Dao
@@ -2126,10 +2121,14 @@ public class DatabaseSessionStoreManager
         @GetGeneratedKeys
         long insertSessionMonitor(@Bind("attemptId") long attemptId, @Bind("nextRunTime") long nextRunTime, @Bind("type") String type, @Bind("config") Config config);
 
-        @SqlQuery("select id from tasks where state = :state limit :limit")
-        List<Long> findAllTaskIdsByState(@Bind("state") short state, @Bind("limit") int limit);
+        @SqlQuery("select id from tasks where state = :state <random> limit :limit")
+        List<Long> findAllTaskIdsByState(@Bind("state") short state, @Bind("limit") int limit, @Define("random") String random);
 
-        List<Long> findAllTaskIdsByStateAtRandom(@Bind("state") short state, @Bind("limit") int limit);
+        @SqlQuery("select id from tasks where state = :state " +
+                " and exists ( select site_id from session_attempts a where tasks.attempt_id = a.id" +
+                "   and <accountFilter> )" +
+                " <random> limit :limit")
+        List<Long> findAllTaskIdsByStateWithAccountFilter(@Bind("state") short state, @Bind("limit") int limit, @Define("random") String random, @Define("accountFilter") String accountFilter);
 
         @SqlQuery("select id, session_id, state_flags, index from session_attempts where id = :attemptId for update")
         SessionAttemptSummary lockAttempt(@Bind("attemptId") long attemptId);

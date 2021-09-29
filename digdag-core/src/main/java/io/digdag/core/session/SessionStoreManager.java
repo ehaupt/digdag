@@ -27,7 +27,7 @@ public interface SessionStoreManager
     boolean isAnyNotDoneAttempts();
 
     // for WorkflowExecutor.enqueueReadyTasks (Keep for compatibility)
-    default List<Long> findAllReadyTaskIds(int maxEntries) { return findAllReadyTaskIds(maxEntries, false); }
+    default List<Long> findAllReadyTaskIds(int maxEntries) { return findAllReadyTaskIds(maxEntries, false, Optional.absent()); }
 
     /**
      * for WorkflowExecutor.enqueueReadyTasks
@@ -35,8 +35,7 @@ public interface SessionStoreManager
      * @param randomFetch fetch randomly or not(original behavior)
      * @return
      */
-    List<Long> findAllReadyTaskIds(int maxEntries, boolean randomFetch);
-
+    List<Long> findAllReadyTaskIds(int maxEntries, boolean randomFetch, Optional<String> accountFilter);
 
     // for AttemptTimeoutEnforcer.enforceAttemptTTLs
     List<StoredSessionAttempt> findActiveAttemptsCreatedBefore(Instant createdBefore, long lastId, int limit);
