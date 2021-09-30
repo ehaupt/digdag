@@ -362,9 +362,14 @@ public class DatabaseSessionStoreManager
 
     @DigdagTimed(value = "dssm_", category = "db", appendMethodName = true)
     @Override
-    public List<Long> findTasksByState(TaskStateCode state, long lastId)
+    public List<Long> findTasksByState(TaskStateCode state, long lastId, Optional<String> accountFilter)
     {
-        return autoCommit((handle, dao) -> dao.findTasksByState(state.get(), lastId, 100));
+        if (accountFilter.isPresent()) {
+            return autoCommit((handle, dao) -> dao.findTasksByStateWithAccountFilter(state.get(), lastId, 100, accountFilter.get()));
+        }
+        else {
+            return autoCommit((handle, dao) -> dao.findTasksByState(state.get(), lastId, 100));
+        }
     }
 
     @DigdagTimed(value = "dssm_", category = "db", appendMethodName = true)
@@ -2208,6 +2213,16 @@ public class DatabaseSessionStoreManager
                 //" order by updated_at asc, id asc" +
                 " limit :limit")
         List<Long> findTasksByState(@Bind("state") short state, @Bind("lastId") long lastId, @Bind("limit") int limit);
+
+        @SqlQuery("select id" +
+                " from tasks" +
+                " where state = :state" +
+                " and id \\> :lastId" +
+                " and exists ( select site_id from session_attempts a where tasks.attempt_id = a.id" +
+                "   and <accountFilter> )" +
+                " order by id asc" +
+                " limit :limit")
+        List<Long> findTasksByStateWithAccountFilter(@Bind("state") short state, @Bind("lastId") long lastId, @Bind("limit") int limit, @Define("accountFilter") String accountFilter);
 
         @SqlQuery("select id from tasks" +
                 " where id = :id" +

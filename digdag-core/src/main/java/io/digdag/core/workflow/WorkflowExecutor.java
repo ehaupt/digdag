@@ -651,7 +651,7 @@ public class WorkflowExecutor
         long lastTaskId = 0;
         while (true) {
             long finalLastTaskId = lastTaskId;
-            List<Long> taskIds = tm.begin(() -> sm.findTasksByState(TaskStateCode.PLANNED, finalLastTaskId));
+            List<Long> taskIds = tm.begin(() -> sm.findTasksByState(TaskStateCode.PLANNED, finalLastTaskId, accountRouting.getFilterSQLOpt()));
             if (taskIds.isEmpty()) {
                 break;
             }
