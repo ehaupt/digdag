@@ -3,6 +3,8 @@ package io.digdag.core.database;
 import java.util.List;
 import java.util.Arrays;
 import io.digdag.client.config.Config;
+import io.digdag.core.acroute.DummyAccountRoutingFactory;
+import io.digdag.spi.AccountRouting;
 import io.digdag.spi.TaskQueueData;
 import io.digdag.spi.TaskQueueRequest;
 import io.digdag.spi.TaskQueueLock;
@@ -25,6 +27,8 @@ import static io.digdag.core.database.DatabaseTestingUtils.setupDatabase;
 public class DatabaseQueueTest
 {
     private static final int siteId = 0;
+    private static final AccountRouting accountRouting = new DummyAccountRoutingFactory().newAccountRouting(AccountRouting.ModuleType.AGENT);
+    private static final Optional<String> accountFilter = accountRouting.getFilterSQLOpt();
 
     @Rule
     public ExpectedException exception = ExpectedException.none();
@@ -70,22 +74,22 @@ public class DatabaseQueueTest
         taskQueue.enqueueDefaultQueueTask(siteId, req3);
 
         // poll 3 tasks
-        List<TaskQueueLock> poll1 = taskQueue.lockSharedAgentTasks(1, "agent1", 300, 10);
+        List<TaskQueueLock> poll1 = taskQueue.lockSharedAgentTasks(1, "agent1", 300, 10, accountFilter);
         assertThat(poll1.size(), is(1));
         assertThat(poll1, is(Arrays.asList(withLockId(req1, poll1.get(0).getLockId()))));
 
-        List<TaskQueueLock> poll2 = taskQueue.lockSharedAgentTasks(1, "agent1", 300, 10);
+        List<TaskQueueLock> poll2 = taskQueue.lockSharedAgentTasks(1, "agent1", 300, 10, accountFilter);
         assertThat(poll2.size(), is(1));
         assertThat(poll2, is(Arrays.asList(withLockId(req2, poll2.get(0).getLockId()))));
 
-        List<TaskQueueLock> poll3 = taskQueue.lockSharedAgentTasks(1, "agent1", 300, 10);
+        List<TaskQueueLock> poll3 = taskQueue.lockSharedAgentTasks(1, "agent1", 300, 10, accountFilter);
         // max concurrency of this site is 2. 3rd task is not acquired.
         assertThat(poll3, is(Arrays.asList()));
 
         // delete 1 task and get next
         taskQueue.deleteTask(siteId, poll1.get(0).getLockId(), "agent1");
 
-        List<TaskQueueLock> poll4 = taskQueue.lockSharedAgentTasks(1, "agent1", 300, 10);
+        List<TaskQueueLock> poll4 = taskQueue.lockSharedAgentTasks(1, "agent1", 300, 10, accountFilter);
         assertThat(poll4.size(), is(1));
         assertThat(poll4, is(Arrays.asList(withLockId(req3, poll4.get(0).getLockId()))));
     }
@@ -104,7 +108,7 @@ public class DatabaseQueueTest
         taskQueue.enqueueDefaultQueueTask(siteId, req3);
         taskQueue.enqueueDefaultQueueTask(siteId, req4);
 
-        List<TaskQueueLock> poll1 = taskQueue.lockSharedAgentTasks(2, "agent1", 300, 10);
+        List<TaskQueueLock> poll1 = taskQueue.lockSharedAgentTasks(2, "agent1", 300, 10, accountFilter);
 
         assertThat(poll1.size(), is(2));
         assertThat(poll1.get(0).getUniqueName(), is("1"));
@@ -113,7 +117,7 @@ public class DatabaseQueueTest
         taskQueue.deleteTask(siteId, poll1.get(0).getLockId(), "agent1");
         taskQueue.deleteTask(siteId, poll1.get(1).getLockId(), "agent1");
 
-        List<TaskQueueLock> poll2 = taskQueue.lockSharedAgentTasks(2, "agent1", 300, 10);
+        List<TaskQueueLock> poll2 = taskQueue.lockSharedAgentTasks(2, "agent1", 300, 10, accountFilter);
         assertThat(poll2.size(), is(2));
         assertThat(poll2.get(0).getUniqueName(), is("3"));
         assertThat(poll2.get(1).getUniqueName(), is("4"));
@@ -140,7 +144,7 @@ public class DatabaseQueueTest
 
         taskQueue.enqueueDefaultQueueTask(siteId, req1);
 
-        List<TaskQueueLock> poll1 = taskQueue.lockSharedAgentTasks(1, "agent1", 300, 10);
+        List<TaskQueueLock> poll1 = taskQueue.lockSharedAgentTasks(1, "agent1", 300, 10, accountFilter);
 
         exception.expect(TaskConflictException.class);
         taskQueue.deleteTask(siteId, poll1.get(0).getLockId(), "different-agent");
@@ -153,7 +157,7 @@ public class DatabaseQueueTest
         TaskQueueRequest req1 = generateRequest("1");
 
         taskQueue.enqueueDefaultQueueTask(siteId, req1);
-        List<TaskQueueLock> poll1 = taskQueue.lockSharedAgentTasks(1, "agent1", 300, 10);
+        List<TaskQueueLock> poll1 = taskQueue.lockSharedAgentTasks(1, "agent1", 300, 10, accountFilter);
 
         exception.expect(TaskNotFoundException.class);
         taskQueue.deleteTask(19832, poll1.get(0).getLockId(), "agent1");
@@ -169,14 +173,14 @@ public class DatabaseQueueTest
         taskQueue.enqueueDefaultQueueTask(siteId, req1);
         taskQueue.enqueueDefaultQueueTask(siteId, req2);
 
-        List<TaskQueueLock> poll1 = taskQueue.lockSharedAgentTasks(2, "agent1", 0, 10);  // lockSeconds = 0
+        List<TaskQueueLock> poll1 = taskQueue.lockSharedAgentTasks(2, "agent1", 0, 10, accountFilter);  // lockSeconds = 0
         assertThat(poll1.size(), is(2));
 
         Thread.sleep(2000);
 
         taskQueue.expireLocks();
 
-        List<TaskQueueLock> poll2 = taskQueue.lockSharedAgentTasks(2, "agent1", 3, 10);
+        List<TaskQueueLock> poll2 = taskQueue.lockSharedAgentTasks(2, "agent1", 3, 10, accountFilter);
         assertThat(poll2.size(), is(2));
         // TODO this needs API to get retry_count to validate retry_count
     }
@@ -191,7 +195,7 @@ public class DatabaseQueueTest
         taskQueue.enqueueDefaultQueueTask(siteId, req1);
         taskQueue.enqueueDefaultQueueTask(siteId, req2);
 
-        List<TaskQueueLock> poll1 = taskQueue.lockSharedAgentTasks(2, "agent1", 0, 10);  // lockSeconds = 0
+        List<TaskQueueLock> poll1 = taskQueue.lockSharedAgentTasks(2, "agent1", 0, 10, accountFilter);  // lockSeconds = 0
         assertThat(poll1.size(), is(2));
 
         Thread.sleep(2000);
@@ -201,7 +205,7 @@ public class DatabaseQueueTest
 
         taskQueue.expireLocks();
 
-        List<TaskQueueLock> poll2 = taskQueue.lockSharedAgentTasks(2, "agent1", 3, 10);
+        List<TaskQueueLock> poll2 = taskQueue.lockSharedAgentTasks(2, "agent1", 3, 10, accountFilter);
 
         // req2 is expired but req1 is not
         assertThat(poll2.size(), is(1));
@@ -216,7 +220,7 @@ public class DatabaseQueueTest
 
         taskQueue.enqueueDefaultQueueTask(siteId, req1);
 
-        List<TaskQueueLock> poll1 = taskQueue.lockSharedAgentTasks(1, "agent1", 300, 10);
+        List<TaskQueueLock> poll1 = taskQueue.lockSharedAgentTasks(1, "agent1", 300, 10, accountFilter);
 
         List<String> failedLockIdList = taskQueue.taskHeartbeat(0, Arrays.asList(poll1.get(0).getLockId()), "different-agent", 3);
         assertThat(failedLockIdList, is(Arrays.asList(poll1.get(0).getLockId())));
@@ -230,7 +234,7 @@ public class DatabaseQueueTest
 
         taskQueue.enqueueDefaultQueueTask(siteId, req1);
 
-        List<TaskQueueLock> poll1 = taskQueue.lockSharedAgentTasks(1, "agent1", 300, 10);
+        List<TaskQueueLock> poll1 = taskQueue.lockSharedAgentTasks(1, "agent1", 300, 10, accountFilter);
 
         List<String> failedLockIdList = taskQueue.taskHeartbeat(19832, Arrays.asList(poll1.get(0).getLockId()), "agent1", 3);
         assertThat(failedLockIdList, is(Arrays.asList(poll1.get(0).getLockId())));

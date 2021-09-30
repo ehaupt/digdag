@@ -9,6 +9,7 @@ import io.digdag.client.config.ConfigUtils;
 import io.digdag.commons.ThrowablesUtil;
 import io.digdag.core.DigdagEmbed;
 import io.digdag.core.LocalSite;
+import io.digdag.core.acroute.DummyAccountRoutingFactory;
 import io.digdag.core.config.YamlConfigLoader;
 import io.digdag.core.crypto.SecretCrypto;
 import io.digdag.core.crypto.SecretCryptoProvider;

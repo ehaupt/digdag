@@ -13,6 +13,7 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.annotation.Nullable;
 
+import com.google.common.base.Optional;
 import com.google.common.collect.*;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.inject.Inject;
@@ -26,6 +27,8 @@ import org.skife.jdbi.v2.sqlobject.SqlUpdate;
 import org.skife.jdbi.v2.sqlobject.Bind;
 import org.skife.jdbi.v2.sqlobject.GetGeneratedKeys;
 import org.skife.jdbi.v2.StatementContext;
+import org.skife.jdbi.v2.sqlobject.customizers.Define;
+import org.skife.jdbi.v2.sqlobject.stringtemplate.UseStringTemplate3StatementLocator;
 import org.skife.jdbi.v2.tweak.ResultSetMapper;
 import io.digdag.spi.ImmutableTaskQueueLock;
 import io.digdag.spi.TaskQueueRequest;
@@ -298,9 +301,14 @@ public class DatabaseTaskQueueServer
     }
 
     @Override
-    public List<TaskQueueLock> lockSharedAgentTasks(int count, String agentId, int lockSeconds, long maxSleepMillis)
+    public List<TaskQueueLock> lockSharedAgentTasks(int count, String agentId, int lockSeconds, long maxSleepMillis, Optional<String> accountFilter)
     {
-        List<Integer> siteIds = autoCommit((handle, dao) -> dao.getActiveSiteIdList());
+        logger.debug("YY lockSharedAgentTasks(): accountFilter:{}", accountFilter);
+        List<Integer> siteIds = autoCommit((handle, dao) ->
+                accountFilter.isPresent()?
+                        dao.getActiveSiteIdListWithAccountFilter(accountFilter.get()):
+                        dao.getActiveSiteIdList()
+        );
         // Here shuffles siteIds to iterate in random order so that scheduling becomes slightly more fair across sites.
         // It also improves overhead when smaller siteIds tend to have more tasks than its siteMaxConcurrency.
         Collections.shuffle(siteIds);
@@ -468,6 +476,7 @@ public class DatabaseTaskQueueServer
         }
     }
 
+    @UseStringTemplate3StatementLocator
     public interface Dao
     {
         @SqlQuery("select shared_site_id from queues where id = :queueId")
@@ -498,6 +507,33 @@ public class DatabaseTaskQueueServer
                 "select site_id as id from t " +
                 "where site_id is not null")
         List<Integer> getActiveSiteIdList();
+
+        // optimized implementation of
+        //   select distinct site_id as id from queued_task_locks
+        //   where lock_expire_time is null
+        //   and site_id is not null
+        //   order by site_id asc
+        @SqlQuery(
+                "with recursive t (site_id) as (" +
+                        "(" +
+                        "select site_id from queued_task_locks " +
+                        "where lock_expire_time is null " +
+                        "and site_id is not null " +
+                        "order by site_id limit 1" +
+                        ") " +
+                        "union all " +
+                        "select (" +
+                        "select site_id from queued_task_locks " +
+                        "where lock_expire_time is null " +
+                        "and site_id is not null " +
+                        "and site_id > t.site_id " +
+                        "order by site_id limit 1" +
+                        ") from t where t.site_id is not null" +
+                        ") " +
+                        "select site_id as id from t " +
+                        "where site_id is not null " +
+                        "and <accountFilter>")
+        List<Integer> getActiveSiteIdListWithAccountFilter(@Define("accountFilter") String accountFilter);
 
         @SqlUpdate("insert into queued_tasks" +
                 " (site_id, queue_id, unique_name, data, created_at)" +

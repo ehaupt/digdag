@@ -1,4 +1,4 @@
-package io.digdag.core.workflow;
+package io.digdag.core.acroute;
 
 import io.digdag.spi.AccountRouting;
 import io.digdag.spi.AccountRoutingFactory;
