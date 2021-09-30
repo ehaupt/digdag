@@ -862,7 +862,7 @@ public class WorkflowExecutor
         while (true) {
             long finalLastTaskId = lastTaskId;
             List<TaskAttemptSummary> tasks =
-                    tm.begin(() -> sm.findRootTasksByStates(TaskStateCode.doneStates(), finalLastTaskId));
+                    tm.begin(() -> sm.findRootTasksByStates(TaskStateCode.doneStates(), finalLastTaskId, accountRouting.getFilterSQLOpt()));
             if (tasks.isEmpty()) {
                 break;
             }

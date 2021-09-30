@@ -374,7 +374,17 @@ public class DatabaseSessionStoreManager
 
     @DigdagTimed(value = "dssm_", category = "db", appendMethodName = true)
     @Override
-    public List<TaskAttemptSummary> findRootTasksByStates(TaskStateCode[] states, long lastId)
+    public List<TaskAttemptSummary> findRootTasksByStates(TaskStateCode[] states, long lastId, Optional<String> accountFilter)
+    {
+        if (accountFilter.isPresent()) {
+            return findRootTasksByStatesWithAccountFilter(states, lastId, accountFilter.get());
+        }
+        else {
+            return findRootTasksByStates(states, lastId);
+        }
+    }
+
+    private List<TaskAttemptSummary> findRootTasksByStates(TaskStateCode[] states, long lastId)
     {
         return autoCommit((handle, dao) ->
                 handle.createQuery(
@@ -393,6 +403,29 @@ public class DatabaseSessionStoreManager
                 .map(tasm)
                 .list()
             );
+    }
+
+    private List<TaskAttemptSummary> findRootTasksByStatesWithAccountFilter(TaskStateCode[] states, long lastId, String accountFilter)
+    {
+        return autoCommit((handle, dao) ->
+                handle.createQuery(
+                                "select id, attempt_id, state" +
+                                        " from tasks t" +
+                                        " where parent_id is null" +
+                                        " and state in (" +
+                                        Stream.of(states)
+                                                .map(it -> Short.toString(it.get())).collect(Collectors.joining(", ")) + ")" +
+                                        " and id > :lastId" +
+                                        " and exists ( select site_id from session_attempts a where t.attempt_id = a.id" +
+                                        "   and " + accountFilter + " )" +
+                                        " order by id asc" +
+                                        " limit :limit"
+                        )
+                        .bind("lastId", lastId)
+                        .bind("limit", 100)
+                        .map(tasm)
+                        .list()
+        );
     }
 
     @DigdagTimed(value = "dssm_", category = "db", appendMethodName = true)

@@ -61,7 +61,7 @@ public interface SessionStoreManager
     List<Long> findTasksByState(TaskStateCode state, long lastId, Optional<String> accountFilter);
 
     // for WorkflowExecutorManager.propagateSessionArchive
-    List<TaskAttemptSummary> findRootTasksByStates(TaskStateCode[] states, long lastId);
+    List<TaskAttemptSummary> findRootTasksByStates(TaskStateCode[] states, long lastId, Optional<String> accountFilter);
 
     // for WorkflowExecutor.propagateBlockedChildrenToReady
     List<Long> findDirectParentsOfBlockedTasks(long lastId, Optional<String> accountFilter);
