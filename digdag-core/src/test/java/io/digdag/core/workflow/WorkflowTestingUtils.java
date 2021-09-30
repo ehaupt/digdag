@@ -24,6 +24,7 @@ import io.digdag.core.repository.ResourceNotFoundException;
 import io.digdag.core.repository.StoredWorkflowDefinition;
 import io.digdag.core.repository.WorkflowDefinitionList;
 import io.digdag.core.session.StoredSessionAttemptWithSession;
+import io.digdag.spi.AccountRoutingFactory;
 import io.digdag.spi.CommandExecutor;
 import io.digdag.spi.OperatorFactory;
 import io.digdag.spi.ScheduleTime;
@@ -75,6 +76,7 @@ public class WorkflowTestingUtils
             })
             .overrideModulesWith((binder) -> {
                 binder.bind(DatabaseConfig.class).toInstance(getEnvironmentDatabaseConfig());
+                binder.bind(AccountRoutingFactory.class).to(DummyAccountRoutingFactory.class);
             })
             ;
         DigdagEmbed embed = customizer.apply(bootstrap).initializeWithoutShutdownHook();
