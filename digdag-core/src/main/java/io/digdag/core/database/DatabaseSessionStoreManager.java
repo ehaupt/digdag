@@ -288,7 +288,7 @@ public class DatabaseSessionStoreManager
     public List<Long> findAllReadyTaskIds(int maxEntries, boolean randomFetch, Optional<String> accountFilter)
     {
         String randomClause = randomFetch ? "order by random()" : "";
-
+        logger.debug("YY findAllReadyTaskIds(): randomClause:{}, accountFilter:{}", randomClause, accountFilter);
         if (accountFilter.isPresent()) {
             return autoCommit((handle, dao) -> dao.findAllTaskIdsByStateWithAccountFilter(TaskStateCode.READY.get(), maxEntries, randomClause, accountFilter.get()));
         }
@@ -364,6 +364,7 @@ public class DatabaseSessionStoreManager
     @Override
     public List<Long> findTasksByState(TaskStateCode state, long lastId, Optional<String> accountFilter)
     {
+        logger.debug("YY findTasksByState(): accountFilter:{}", accountFilter);
         if (accountFilter.isPresent()) {
             return autoCommit((handle, dao) -> dao.findTasksByStateWithAccountFilter(state.get(), lastId, 100, accountFilter.get()));
         }
@@ -376,6 +377,7 @@ public class DatabaseSessionStoreManager
     @Override
     public List<TaskAttemptSummary> findRootTasksByStates(TaskStateCode[] states, long lastId, Optional<String> accountFilter)
     {
+        logger.debug("YY findRootTasksByStates(): accountFilter:{}", accountFilter);
         if (accountFilter.isPresent()) {
             return findRootTasksByStatesWithAccountFilter(states, lastId, accountFilter.get());
         }
@@ -432,6 +434,7 @@ public class DatabaseSessionStoreManager
     @Override
     public List<Long> findDirectParentsOfBlockedTasks(long lastId, Optional<String> accountFilter)
     {
+        logger.debug("YY findDirectParentsOfBlockedTasks(): accountFilter:{}", accountFilter);
         if (accountFilter.isPresent()) {
             return findDirectParentsOfBlockedTasksWithAccountFilter(lastId, accountFilter.get());
         }
@@ -460,7 +463,6 @@ public class DatabaseSessionStoreManager
 
     private List<Long> findDirectParentsOfBlockedTasksWithAccountFilter(long lastId, String accountFilter)
     {
-        logger.info("YY findDirectParentsOfBlockedTasksWithAccountFilter: {}", accountFilter);
         return autoCommit((handle, dao) ->
                 handle.createQuery(
                                 "select distinct parent_id" +
@@ -528,6 +530,7 @@ public class DatabaseSessionStoreManager
     @Override
     public int trySetRetryWaitingToReady(Optional<String> accountFilter)
     {
+        logger.info("YY trySetRetryWaitingToReady: {}", accountFilter);
         if (accountFilter.isPresent()) {
             return autoCommit((handle, dao) -> dao.trySetRetryWaitingToReadyWithAccountFilter(accountFilter.get()));
         }
