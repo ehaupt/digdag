@@ -614,12 +614,7 @@ public class WorkflowExecutor
         long lastParentId = 0;
         while (true) {
             long finalLastParentId = lastParentId;
-            String acrouteFilter = accountRouting.getFilterSQL();
-            logger.debug("YY account routing: {}", acrouteFilter);
-
-            List<Long> parentIds = tm.begin(() -> accountRouting.enabled() ?
-                    sm.findDirectParentsOfBlockedTasksWithAccountFilter(finalLastParentId, acrouteFilter) :
-                    sm.findDirectParentsOfBlockedTasks(finalLastParentId));
+            List<Long> parentIds = tm.begin(() -> sm.findDirectParentsOfBlockedTasks(finalLastParentId, accountRouting.getFilterSQLOpt()));
 
             if (parentIds.isEmpty()) {
                 break;
@@ -890,12 +885,7 @@ public class WorkflowExecutor
     @DigdagTimed(category = "executor", appendMethodName = true)
     protected boolean retryRetryWaitingTasks()
     {
-        return tm.begin(() -> {
-            int updated = accountRouting.enabled() ?
-                    sm.trySetRetryWaitingToReadyWithAccountFilter(accountRouting.getFilterSQL()) :
-                    sm.trySetRetryWaitingToReady();
-            return updated > 0;
-        });
+        return tm.begin(() -> sm.trySetRetryWaitingToReady(accountRouting.getFilterSQLOpt()) > 0);
     }
 
     private class TaskQueuer
@@ -957,8 +947,7 @@ public class WorkflowExecutor
     @DigdagTimed(category = "executor", appendMethodName = true)
     protected void enqueueReadyTasks(TaskQueuer queuer)
     {
-        Optional<String> accountFilter = accountRouting.enabled() ? Optional.of(accountRouting.getFilterSQL()) : Optional.absent();
-        List<Long> readyTaskIds = tm.begin(() -> sm.findAllReadyTaskIds(enqueueFetchSize, enqueueRandomFetch, accountFilter));
+        List<Long> readyTaskIds = tm.begin(() -> sm.findAllReadyTaskIds(enqueueFetchSize, enqueueRandomFetch, accountRouting.getFilterSQLOpt()));
         logger.trace("readyTaskIds:{}", readyTaskIds);
         for (long taskId : readyTaskIds) {  // TODO randomize this result to achieve concurrency
             catching(()->funcEnqueueTask().apply(taskId), true, "Failed to call enqueueTask. taskId:" + taskId);

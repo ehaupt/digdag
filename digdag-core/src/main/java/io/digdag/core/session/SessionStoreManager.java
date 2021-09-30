@@ -64,16 +64,11 @@ public interface SessionStoreManager
     List<TaskAttemptSummary> findRootTasksByStates(TaskStateCode[] states, long lastId);
 
     // for WorkflowExecutor.propagateBlockedChildrenToReady
-    List<Long> findDirectParentsOfBlockedTasks(long lastId);
-
-    // for WorkflowExecutor.propagateBlockedChildrenToReady
-    List<Long> findDirectParentsOfBlockedTasksWithAccountFilter(long lastId, String accountFilter);
+    List<Long> findDirectParentsOfBlockedTasks(long lastId, Optional<String> accountFilter);
 
     boolean requestCancelAttempt(long attemptId);
 
-    int trySetRetryWaitingToReady();
-
-    int trySetRetryWaitingToReadyWithAccountFilter(String accountFilter);
+    int trySetRetryWaitingToReady(Optional<String> accountFilter);
 
     interface TaskLockAction <T>
     {

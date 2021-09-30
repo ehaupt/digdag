@@ -1,5 +1,7 @@
 package io.digdag.spi;
 
+import com.google.common.base.Optional;
+
 public interface AccountRouting
 {
     enum ModuleType
@@ -22,6 +24,7 @@ public interface AccountRouting
         }
     }
 
+    String DEFAULT_COLUMN = "site_id";
 
     Boolean enabled();
 
@@ -29,6 +32,16 @@ public interface AccountRouting
 
     default String getFilterSQL()
     {
-        return getFilterSQL("site_id");
+        return getFilterSQL(DEFAULT_COLUMN);
+    }
+
+    default Optional<String> getFilterSQLOpt(String column)
+    {
+        return enabled() ? Optional.of(getFilterSQL()) : Optional.absent();
+    }
+
+    default Optional<String> getFilterSQLOpt()
+    {
+        return getFilterSQLOpt(DEFAULT_COLUMN);
     }
 }

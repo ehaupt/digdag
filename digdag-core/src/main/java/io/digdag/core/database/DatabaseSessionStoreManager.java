@@ -392,7 +392,17 @@ public class DatabaseSessionStoreManager
 
     @DigdagTimed(value = "dssm_", category = "db", appendMethodName = true)
     @Override
-    public List<Long> findDirectParentsOfBlockedTasks(long lastId)
+    public List<Long> findDirectParentsOfBlockedTasks(long lastId, Optional<String> accountFilter)
+    {
+        if (accountFilter.isPresent()) {
+            return findDirectParentsOfBlockedTasksWithAccountFilter(lastId, accountFilter.get());
+        }
+        else {
+            return findDirectParentsOfBlockedTasks(lastId);
+        }
+    }
+
+    private List<Long> findDirectParentsOfBlockedTasks(long lastId)
     {
         return autoCommit((handle, dao) ->
                 handle.createQuery(
@@ -410,9 +420,7 @@ public class DatabaseSessionStoreManager
             );
     }
 
-    @DigdagTimed(value = "dssm_", category = "db", appendMethodName = true)
-    @Override
-    public List<Long> findDirectParentsOfBlockedTasksWithAccountFilter(long lastId, String accountFilter)
+    private List<Long> findDirectParentsOfBlockedTasksWithAccountFilter(long lastId, String accountFilter)
     {
         logger.info("YY findDirectParentsOfBlockedTasksWithAccountFilter: {}", accountFilter);
         return autoCommit((handle, dao) ->
@@ -480,17 +488,14 @@ public class DatabaseSessionStoreManager
 
     @DigdagTimed(value = "dssm_", category = "db", appendMethodName = true)
     @Override
-    public int trySetRetryWaitingToReady()
+    public int trySetRetryWaitingToReady(Optional<String> accountFilter)
     {
-        return autoCommit((handle, dao) -> dao.trySetRetryWaitingToReady());
-    }
-
-    @DigdagTimed(value = "dssm_", category = "db", appendMethodName = true)
-    @Override
-    public int trySetRetryWaitingToReadyWithAccountFilter(String accountFilter)
-    {
-        logger.info("yy trySetRetryWaitingToReadyWithAccountFilter: {}", accountFilter);
-        return autoCommit((handle, dao) -> dao.trySetRetryWaitingToReadyWithAccountFilter(accountFilter));
+        if (accountFilter.isPresent()) {
+            return autoCommit((handle, dao) -> dao.trySetRetryWaitingToReadyWithAccountFilter(accountFilter.get()));
+        }
+        else {
+            return autoCommit((handle, dao) -> dao.trySetRetryWaitingToReady());
+        }
     }
 
     @DigdagTimed(value = "dssm_", category = "db", appendMethodName = true)
