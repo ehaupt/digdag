@@ -119,7 +119,7 @@ public class ScheduleExecutorTest
         when(projectStoreManager.getWorkflowDetailsById(WORKFLOW_DEFINITION_ID)).thenReturn(workflowDefinition);
 
         doAnswer(invocation -> {
-            ScheduleStoreManager.ScheduleAction func = invocation.getArgumentAt(2, ScheduleStoreManager.ScheduleAction.class);
+            ScheduleStoreManager.ScheduleAction func = invocation.getArgumentAt(3, ScheduleStoreManager.ScheduleAction.class);
             func.schedule(scs, schedule);
             return null;
         }).when(scheduleStoreManager).lockReadySchedules(any(Instant.class), eq(1), any(AccountRouting.class), any(ScheduleStoreManager.ScheduleAction.class));
