@@ -59,7 +59,7 @@ public class MultiThreadAgent
         this.errorReporter = errorReporter;
         this.metrics = metrics;
         this.acrouteFactory = acrouteFactory;
-        this.accountRouting = acrouteFactory.newAccountRouting(AccountRouting.ModuleType.AGENT);
+        this.accountRouting = this.acrouteFactory.newAccountRouting(AccountRouting.ModuleType.AGENT);
 
         ThreadFactory threadFactory = new ThreadFactoryBuilder()
             .setDaemon(false)  // make them non-daemon threads so that shutting down agent doesn't kill operator execution

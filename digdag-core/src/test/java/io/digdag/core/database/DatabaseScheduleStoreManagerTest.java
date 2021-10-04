@@ -5,6 +5,8 @@ import java.util.*;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicReference;
 
+import io.digdag.core.acroute.DummyAccountRoutingFactory;
+import io.digdag.spi.AccountRouting;
 import org.junit.*;
 import com.google.common.base.Optional;
 import com.google.common.collect.*;
@@ -30,6 +32,8 @@ public class DatabaseScheduleStoreManagerTest
 
     private ScheduleStoreManager schedManager;
     private ScheduleStore schedStore;
+
+    private AccountRouting accountRouting = new DummyAccountRoutingFactory().newAccountRouting(AccountRouting.ModuleType.SCHEDULER);
 
     @Before
     public void setUp()
@@ -207,20 +211,20 @@ public class DatabaseScheduleStoreManagerTest
             assertEquals(sched4.getId(), (long) schedStore.lockScheduleById(sched4.getId(), (store, schedule) -> schedule.getId()));
 
             List<Integer> lockedByRuntime1 = new ArrayList<>();
-            schedManager.lockReadySchedules(runTime1, 10, (store, schedule) -> {
+            schedManager.lockReadySchedules(runTime1, 10, accountRouting, (store, schedule) -> {
                 lockedByRuntime1.add(schedule.getId());
             });
             assertEquals(ImmutableList.of(sched1.getId()), lockedByRuntime1);
 
             List<Integer> lockedByRuntime2 = new ArrayList<>();
-            schedManager.lockReadySchedules(runTime2, 10, (store, schedule) -> {
+            schedManager.lockReadySchedules(runTime2, 10, accountRouting, (store, schedule) -> {
                 lockedByRuntime2.add(schedule.getId());
             });
             assertEquals(ImmutableList.of(sched3.getId(), sched4.getId()), lockedByRuntime2);
 
             // exception during lockReadySchedules
             try {
-                schedManager.lockReadySchedules(runTime2, 10, (store, schedule) -> {
+                schedManager.lockReadySchedules(runTime2, 10, accountRouting, (store, schedule) -> {
                     throw new RuntimeException("processing " + schedule.getId());
                 });
                 fail();
@@ -238,7 +242,7 @@ public class DatabaseScheduleStoreManagerTest
             Instant schedTime4 = now.plusSeconds(40);
 
             try {
-                schedManager.lockReadySchedules(runTime2, 10, (store, schedule) -> {
+                schedManager.lockReadySchedules(runTime2, 10, accountRouting, (store, schedule) -> {
                     if (schedule.getId() == sched3.getId()) {
                         throw new RuntimeException();
                     }
@@ -257,7 +261,7 @@ public class DatabaseScheduleStoreManagerTest
             }
 
             List<Integer> updated = new ArrayList<>();
-            schedManager.lockReadySchedules(runTime2, 10, (store, schedule) -> {
+            schedManager.lockReadySchedules(runTime2, 10, accountRouting, (store, schedule) -> {
                 updated.add(schedule.getId());
                 try {
                     store.updateNextScheduleTimeAndLastSessionTime(schedule.getId(), ScheduleTime.of(schedTime4, runTime4), schedTime1);
@@ -332,7 +336,7 @@ public class DatabaseScheduleStoreManagerTest
             });
             {
                 List<Integer> ready = new ArrayList<>();
-                schedManager.lockReadySchedules(Instant.now(), 10, (store, schedule) -> ready.add(schedule.getId()));
+                schedManager.lockReadySchedules(Instant.now(), 10, accountRouting, (store, schedule) -> ready.add(schedule.getId()));
                 assertThat(ready, containsInAnyOrder(sched1.getId(), sched2.getId()));
             }
 
@@ -343,7 +347,7 @@ public class DatabaseScheduleStoreManagerTest
             });
             {
                 List<Integer> ready = new ArrayList<>();
-                schedManager.lockReadySchedules(Instant.now(), 10, (store, schedule) -> ready.add(schedule.getId()));
+                schedManager.lockReadySchedules(Instant.now(), 10, accountRouting, (store, schedule) -> ready.add(schedule.getId()));
                 assertThat(ready, contains(sched2.getId()));
             }
 
@@ -371,7 +375,7 @@ public class DatabaseScheduleStoreManagerTest
             });
             {
                 List<Integer> ready = new ArrayList<>();
-                schedManager.lockReadySchedules(Instant.now(), 10, (store, schedule) -> ready.add(schedule.getId()));
+                schedManager.lockReadySchedules(Instant.now(), 10, accountRouting, (store, schedule) -> ready.add(schedule.getId()));
                 assertThat(ready, containsInAnyOrder(sched1.getId(), sched2.getId()));
             }
 
@@ -382,7 +386,7 @@ public class DatabaseScheduleStoreManagerTest
             });
             {
                 List<Integer> ready = new ArrayList<>();
-                schedManager.lockReadySchedules(Instant.now(), 10, (store, schedule) -> ready.add(schedule.getId()));
+                schedManager.lockReadySchedules(Instant.now(), 10, accountRouting, (store, schedule) -> ready.add(schedule.getId()));
                 assertThat(ready, containsInAnyOrder(sched1.getId(), sched2.getId()));
             }
         });

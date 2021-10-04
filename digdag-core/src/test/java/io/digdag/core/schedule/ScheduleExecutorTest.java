@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableList;
 import io.digdag.client.DigdagClient;
 import io.digdag.client.config.Config;
 import io.digdag.client.config.ConfigFactory;
+import io.digdag.core.acroute.DummyAccountRoutingFactory;
 import io.digdag.core.database.ThreadLocalTransactionManager;
 import io.digdag.core.database.TransactionManager;
 import io.digdag.core.repository.ProjectStoreManager;
@@ -15,6 +16,7 @@ import io.digdag.core.session.SessionStoreManager;
 import io.digdag.core.session.StoredSessionAttemptWithSession;
 import io.digdag.core.workflow.AttemptBuilder;
 import io.digdag.core.workflow.WorkflowExecutor;
+import io.digdag.spi.AccountRouting;
 import io.digdag.spi.ScheduleTime;
 import io.digdag.spi.Scheduler;
 import org.junit.Before;
@@ -88,7 +90,8 @@ public class ScheduleExecutorTest
                         attemptBuilder,
                         workflowExecutor,
                         CONFIG_FACTORY,
-                        scheduleConfig
+                        scheduleConfig,
+                        new DummyAccountRoutingFactory()
                 ));
 
         now = Instant.now();
@@ -119,7 +122,7 @@ public class ScheduleExecutorTest
             ScheduleStoreManager.ScheduleAction func = invocation.getArgumentAt(2, ScheduleStoreManager.ScheduleAction.class);
             func.schedule(scs, schedule);
             return null;
-        }).when(scheduleStoreManager).lockReadySchedules(any(Instant.class), eq(1), any(ScheduleStoreManager.ScheduleAction.class));
+        }).when(scheduleStoreManager).lockReadySchedules(any(Instant.class), eq(1), any(AccountRouting.class), any(ScheduleStoreManager.ScheduleAction.class));
     }
 
     @Test
