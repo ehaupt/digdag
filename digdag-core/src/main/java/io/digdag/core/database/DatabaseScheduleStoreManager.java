@@ -271,7 +271,7 @@ public class DatabaseScheduleStoreManager
                 " join workflow_definitions wd on wd.id = s.workflow_definition_id" +
                 " where s.next_run_time \\<= :currentTime" +
                 " and s.disabled_at is null" +
-                " and exists ( select site_id from projects p where schedules.project_id = p.id" +
+                " and exists ( select site_id from projects p where s.project_id = p.id" +
                 "   and <accountFilter> )" +
                 " limit :limit" +
                 " for update of s skip locked")
