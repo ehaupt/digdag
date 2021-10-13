@@ -8,12 +8,10 @@ import io.digdag.spi.AccountRouting;
 import io.digdag.spi.AccountRoutingFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.Int;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static io.digdag.spi.AccountRouting.ModuleType;
 
@@ -26,7 +24,6 @@ public class DefaultAccountRoutingFactory implements AccountRoutingFactory
     public DefaultAccountRoutingFactory(Config systemConfig)
     {
         this.systemConfig = systemConfig;
-        logger.debug("DefaultAccountRoutingFactory() called");
     }
 
     @Override
@@ -57,8 +54,6 @@ public class DefaultAccountRoutingFactory implements AccountRoutingFactory
         List<Integer> include = parseIdList(config.get(prefix + "include", String.class, ""));
         List<Integer> exclude = parseIdList(config.get(prefix + "exclude", String.class, ""));
 
-        logger.debug("YY fromConfig: {} {} {} {}", prefix, enabled, include, exclude);
-
         // validation
         if (enabled) {
             if (include.isEmpty() && exclude.isEmpty()) {
@@ -73,5 +68,4 @@ public class DefaultAccountRoutingFactory implements AccountRoutingFactory
             return new DefaultAccountRouting();
         }
     }
-
 }
