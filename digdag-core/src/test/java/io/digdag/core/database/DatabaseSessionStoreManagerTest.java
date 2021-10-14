@@ -4,6 +4,8 @@ import java.util.*;
 import java.time.Instant;
 import java.time.ZoneId;
 
+import io.digdag.core.acroute.DefaultAccountRoutingFactory;
+import io.digdag.spi.AccountRouting;
 import org.hamcrest.Matchers;
 import org.junit.*;
 import com.google.common.base.Optional;
@@ -19,6 +21,7 @@ import static io.digdag.core.database.DatabaseTestingUtils.*;
 import static io.digdag.client.config.ConfigUtils.newConfig;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 public class DatabaseSessionStoreManagerTest
@@ -44,6 +47,10 @@ public class DatabaseSessionStoreManagerTest
     private StoredWorkflowDefinition otherProjWf2;
     private StoredSessionAttemptWithSession otherProjAttempt1;
     private StoredSessionWithLastAttempt otherProjSession1;
+
+    private AccountRouting accountRoutingDisabled; // Disabled
+    private AccountRouting accountRoutingInclude0; // account_routing.include = 0;
+    private AccountRouting accountRoutingExclude0; // account_routing.exclude = 0;
 
     @Before
     public void setUp()
@@ -106,6 +113,19 @@ public class DatabaseSessionStoreManagerTest
             otherProjAttempt1 = exec.submitWorkflow(0, otherProjAr1, otherSrcWf1);
             otherProjSession1 = store.getSessionById(otherProjAttempt1.getSessionId());
         });
+        setUpAccountRouting();
+    }
+
+    private void setUpAccountRouting()
+    {
+        Config cf1 = newConfig();
+        this.accountRoutingDisabled = DefaultAccountRoutingFactory.fromConfig(cf1, Optional.of(AccountRouting.ModuleType.EXECUTOR.toString()));
+        cf1.set("executor.account_routing.enabled", "true")
+                .set("executor.account_routing.include", "0");
+        this.accountRoutingInclude0 = DefaultAccountRoutingFactory.fromConfig(cf1, Optional.of(AccountRouting.ModuleType.EXECUTOR.toString()));
+        cf1.remove("executor.account_routing.include")
+                .set("executor.account_routing.exclude", "0");
+        this.accountRoutingExclude0 = DefaultAccountRoutingFactory.fromConfig(cf1, Optional.of(AccountRouting.ModuleType.EXECUTOR.toString()));
     }
 
     @After
@@ -528,5 +548,74 @@ public class DatabaseSessionStoreManagerTest
                     .resumingTaskId(Optional.absent())  // d0c5f950 added ArchivedTask.getResumingTaskId
                     .build()
                     ));
+    }
+
+    @Test
+    public void testAccountRouting_findAllReadyTaskIds()
+        throws Exception
+    {
+        exec.propagateBlockedChildrenToReady(); // Move state of tasks to ready.
+        factory.begin(() -> {
+            List<Long> ids;
+            ids = manager.findAllReadyTaskIds(1, true, this.accountRoutingDisabled);
+            assertThat(ids.size(), greaterThan(0) );
+            ids = manager.findAllReadyTaskIds(1, true, this.accountRoutingInclude0);
+            assertThat(ids.size(), greaterThan(0) );
+            ids = manager.findAllReadyTaskIds(1, true, this.accountRoutingExclude0);
+            assertThat(ids.size(), is(0) );
+        });
+    }
+
+    @Test
+    public void testAccountRouting_findTasksByState()
+            throws Exception
+    {
+        factory.begin(() -> {
+            List<Long> ids;
+            ids = manager.findTasksByState(TaskStateCode.PLANNED, 0L, this.accountRoutingDisabled);
+            assertThat(ids.size(), greaterThan(0) );
+            ids = manager.findTasksByState(TaskStateCode.PLANNED, 0L, this.accountRoutingInclude0);
+            assertThat(ids.size(), greaterThan(0) );
+            ids = manager.findTasksByState(TaskStateCode.PLANNED, 0L, this.accountRoutingExclude0);
+            assertThat(ids.size(), is(0) );
+        });
+    }
+
+    @Test
+    public void testAccountRouting_findRootTasksByStates()
+            throws Exception
+    {
+        factory.begin(() -> {
+            List<TaskAttemptSummary> tasks;
+            tasks = manager.findRootTasksByStates(TaskStateCode.notDoneStates(), 0L, this.accountRoutingDisabled);
+            assertThat(tasks.size(), greaterThan(0) );
+            tasks = manager.findRootTasksByStates(TaskStateCode.notDoneStates(), 0L, this.accountRoutingInclude0);
+            assertThat(tasks.size(), greaterThan(0) );
+            tasks = manager.findRootTasksByStates(TaskStateCode.notDoneStates(), 0L, this.accountRoutingExclude0);
+            assertThat(tasks.size(), is(0) );
+        });
+
+    }
+
+    @Test
+    public void testAccountRouting_findDirectParentsOfBlockedTasks()
+            throws Exception
+    {
+        factory.begin(() -> {
+            List<Long> ids;
+            ids = manager.findDirectParentsOfBlockedTasks(0L, this.accountRoutingDisabled);
+            assertThat(ids.size(), greaterThan(0) );
+            ids = manager.findDirectParentsOfBlockedTasks(0L, this.accountRoutingInclude0);
+            assertThat(ids.size(), greaterThan(0) );
+            ids = manager.findDirectParentsOfBlockedTasks(0L, this.accountRoutingExclude0);
+            assertThat(ids.size(), is(0) );
+        });
+    }
+
+    @Test
+    public void testAccountRouting_trySetRetryWaitingToReady()
+            throws Exception
+    {
+
     }
 }

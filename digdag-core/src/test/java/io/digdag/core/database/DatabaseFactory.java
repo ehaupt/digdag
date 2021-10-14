@@ -98,6 +98,12 @@ public class DatabaseFactory
     {
         ConfigFactory configFactory = createConfigFactory();
         Config systemConfig = configFactory.create();
+        return getWorkflowExecutor(configFactory, systemConfig);
+
+    }
+
+    public WorkflowExecutor getWorkflowExecutor(ConfigFactory configFactory, Config systemConfig)
+    {
         return new WorkflowExecutor(
                 getProjectStoreManager(),
                 getSessionStoreManager(),

@@ -6,7 +6,7 @@ import java.util.List;
 
 public interface TaskQueueClient
 {
-    List<TaskQueueLock> lockSharedAgentTasks(int count, String agentId, int lockSeconds, long maxSleepMillis, Optional<String> accountFilter);
+    List<TaskQueueLock> lockSharedAgentTasks(int count, String agentId, int lockSeconds, long maxSleepMillis, AccountRouting accountRouting);
 
     // TODO multi-queue is not implemented yet.
     //   List<TaskQueueLock> lockAgentBoundTasks(int queueId)

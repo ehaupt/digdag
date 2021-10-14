@@ -30,7 +30,7 @@ public class InProcessTaskServerApi
             int count, AgentId agentId,
             int lockSeconds, long maxSleepMillis, AccountRouting accountRouting)
     {
-        List<TaskQueueLock> locks = directQueueClient.lockSharedAgentTasks(count, agentId.toString(), lockSeconds, maxSleepMillis, accountRouting.getFilterSQLOpt());
+        List<TaskQueueLock> locks = directQueueClient.lockSharedAgentTasks(count, agentId.toString(), lockSeconds, maxSleepMillis, accountRouting);
         if (locks.isEmpty()) {
             return ImmutableList.of();
         }

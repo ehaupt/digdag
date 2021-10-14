@@ -176,7 +176,7 @@ public class WorkflowExecutor
     private final Config systemConfig;
     private final Limits limits;
     private final DigdagMetrics metrics;
-    private final AccountRoutingFactory acrouteFactory;
+    private final AccountRoutingFactory acroaccountRoutingFactoryuteFactory;
     private final AccountRouting accountRouting;
     private final Lock propagatorLock = new ReentrantLock();
     private final Condition propagatorCondition = propagatorLock.newCondition();
@@ -196,7 +196,7 @@ public class WorkflowExecutor
             Config systemConfig,
             Limits limits,
             DigdagMetrics metrics,
-            AccountRoutingFactory acrouteFactory)
+            AccountRoutingFactory accountRoutingFactory)
     {
         this.rm = rm;
         this.sm = sm;
@@ -208,8 +208,8 @@ public class WorkflowExecutor
         this.systemConfig = systemConfig;
         this.limits = limits;
         this.metrics = metrics;
-        this.acrouteFactory = acrouteFactory;
-        this.accountRouting = acrouteFactory.newAccountRouting(AccountRouting.ModuleType.EXECUTOR);
+        this.acroaccountRoutingFactoryuteFactory = accountRoutingFactory;
+        this.accountRouting = this.acroaccountRoutingFactoryuteFactory.newAccountRouting(AccountRouting.ModuleType.EXECUTOR);
         this.enqueueRandomFetch = systemConfig.get("executor.enqueue_random_fetch", Boolean.class, false);
         this.enqueueFetchSize = systemConfig.get("executor.enqueue_fetch_size", Integer.class, 100);
     }
@@ -608,13 +608,13 @@ public class WorkflowExecutor
     }
 
     @DigdagTimed(category = "executor", appendMethodName = true)
-    protected boolean propagateBlockedChildrenToReady()
+    public boolean propagateBlockedChildrenToReady()
     {
         boolean anyChanged = false;
         long lastParentId = 0;
         while (true) {
             long finalLastParentId = lastParentId;
-            List<Long> parentIds = tm.begin(() -> sm.findDirectParentsOfBlockedTasks(finalLastParentId, accountRouting.getFilterSQLOpt()));
+            List<Long> parentIds = tm.begin(() -> sm.findDirectParentsOfBlockedTasks(finalLastParentId, accountRouting));
 
             if (parentIds.isEmpty()) {
                 break;
@@ -651,7 +651,7 @@ public class WorkflowExecutor
         long lastTaskId = 0;
         while (true) {
             long finalLastTaskId = lastTaskId;
-            List<Long> taskIds = tm.begin(() -> sm.findTasksByState(TaskStateCode.PLANNED, finalLastTaskId, accountRouting.getFilterSQLOpt()));
+            List<Long> taskIds = tm.begin(() -> sm.findTasksByState(TaskStateCode.PLANNED, finalLastTaskId, accountRouting));
             if (taskIds.isEmpty()) {
                 break;
             }
@@ -862,7 +862,7 @@ public class WorkflowExecutor
         while (true) {
             long finalLastTaskId = lastTaskId;
             List<TaskAttemptSummary> tasks =
-                    tm.begin(() -> sm.findRootTasksByStates(TaskStateCode.doneStates(), finalLastTaskId, accountRouting.getFilterSQLOpt()));
+                    tm.begin(() -> sm.findRootTasksByStates(TaskStateCode.doneStates(), finalLastTaskId, accountRouting));
             if (tasks.isEmpty()) {
                 break;
             }
@@ -885,7 +885,7 @@ public class WorkflowExecutor
     @DigdagTimed(category = "executor", appendMethodName = true)
     protected boolean retryRetryWaitingTasks()
     {
-        return tm.begin(() -> sm.trySetRetryWaitingToReady(accountRouting.getFilterSQLOpt()) > 0);
+        return tm.begin(() -> sm.trySetRetryWaitingToReady(accountRouting) > 0);
     }
 
     private class TaskQueuer
@@ -947,7 +947,7 @@ public class WorkflowExecutor
     @DigdagTimed(category = "executor", appendMethodName = true)
     protected void enqueueReadyTasks(TaskQueuer queuer)
     {
-        List<Long> readyTaskIds = tm.begin(() -> sm.findAllReadyTaskIds(enqueueFetchSize, enqueueRandomFetch, accountRouting.getFilterSQLOpt()));
+        List<Long> readyTaskIds = tm.begin(() -> sm.findAllReadyTaskIds(enqueueFetchSize, enqueueRandomFetch, accountRouting));
         logger.trace("readyTaskIds:{}", readyTaskIds);
         for (long taskId : readyTaskIds) {  // TODO randomize this result to achieve concurrency
             catching(()->funcEnqueueTask().apply(taskId), true, "Failed to call enqueueTask. taskId:" + taskId);

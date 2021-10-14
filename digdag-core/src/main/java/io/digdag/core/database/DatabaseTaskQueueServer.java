@@ -20,6 +20,7 @@ import com.google.inject.Inject;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.digdag.core.ErrorReporter;
 import io.digdag.core.log.LogMarkers;
+import io.digdag.spi.AccountRouting;
 import io.digdag.spi.metrics.DigdagMetrics;
 import static io.digdag.spi.metrics.DigdagMetrics.Category;
 import org.skife.jdbi.v2.sqlobject.SqlQuery;
@@ -301,8 +302,9 @@ public class DatabaseTaskQueueServer
     }
 
     @Override
-    public List<TaskQueueLock> lockSharedAgentTasks(int count, String agentId, int lockSeconds, long maxSleepMillis, Optional<String> accountFilter)
+    public List<TaskQueueLock> lockSharedAgentTasks(int count, String agentId, int lockSeconds, long maxSleepMillis, AccountRouting accountRouting)
     {
+        Optional<String> accountFilter = accountRouting.getFilterSQLOpt();
         logger.debug("YY lockSharedAgentTasks(): accountFilter:{}", accountFilter);
         List<Integer> siteIds = autoCommit((handle, dao) ->
                 accountFilter.isPresent()?

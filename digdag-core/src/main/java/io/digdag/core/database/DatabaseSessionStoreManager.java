@@ -57,6 +57,7 @@ import io.digdag.core.session.TaskStateSummary;
 import io.digdag.core.session.TaskType;
 import io.digdag.core.workflow.TaskConfig;
 import io.digdag.metrics.DigdagTimed;
+import io.digdag.spi.AccountRouting;
 import io.digdag.spi.TaskReport;
 import io.digdag.spi.TaskResult;
 import io.digdag.spi.ac.AccessController;
@@ -285,9 +286,10 @@ public class DatabaseSessionStoreManager
 
     @DigdagTimed(value = "dssm_", category = "db", appendMethodName = true)
     @Override
-    public List<Long> findAllReadyTaskIds(int maxEntries, boolean randomFetch, Optional<String> accountFilter)
+    public List<Long> findAllReadyTaskIds(int maxEntries, boolean randomFetch, AccountRouting accountRouting)
     {
         String randomClause = randomFetch ? "order by random()" : "";
+        Optional<String> accountFilter = accountRouting.getFilterSQLOpt();
         logger.debug("YY findAllReadyTaskIds(): randomClause:{}, accountFilter:{}", randomClause, accountFilter);
         if (accountFilter.isPresent()) {
             return autoCommit((handle, dao) -> dao.findAllTaskIdsByStateWithAccountFilter(TaskStateCode.READY.get(), maxEntries, randomClause, accountFilter.get()));
@@ -362,8 +364,9 @@ public class DatabaseSessionStoreManager
 
     @DigdagTimed(value = "dssm_", category = "db", appendMethodName = true)
     @Override
-    public List<Long> findTasksByState(TaskStateCode state, long lastId, Optional<String> accountFilter)
+    public List<Long> findTasksByState(TaskStateCode state, long lastId, AccountRouting accountRouting)
     {
+        Optional<String> accountFilter = accountRouting.getFilterSQLOpt();
         logger.debug("YY findTasksByState(): accountFilter:{}", accountFilter);
         if (accountFilter.isPresent()) {
             return autoCommit((handle, dao) -> dao.findTasksByStateWithAccountFilter(state.get(), lastId, 100, accountFilter.get()));
@@ -375,8 +378,9 @@ public class DatabaseSessionStoreManager
 
     @DigdagTimed(value = "dssm_", category = "db", appendMethodName = true)
     @Override
-    public List<TaskAttemptSummary> findRootTasksByStates(TaskStateCode[] states, long lastId, Optional<String> accountFilter)
+    public List<TaskAttemptSummary> findRootTasksByStates(TaskStateCode[] states, long lastId, AccountRouting accountRouting)
     {
+        Optional<String> accountFilter = accountRouting.getFilterSQLOpt();
         logger.debug("YY findRootTasksByStates(): accountFilter:{}", accountFilter);
         if (accountFilter.isPresent()) {
             return findRootTasksByStatesWithAccountFilter(states, lastId, accountFilter.get());
@@ -432,8 +436,9 @@ public class DatabaseSessionStoreManager
 
     @DigdagTimed(value = "dssm_", category = "db", appendMethodName = true)
     @Override
-    public List<Long> findDirectParentsOfBlockedTasks(long lastId, Optional<String> accountFilter)
+    public List<Long> findDirectParentsOfBlockedTasks(long lastId, AccountRouting accountRouting)
     {
+        Optional<String> accountFilter = accountRouting.getFilterSQLOpt();
         logger.debug("YY findDirectParentsOfBlockedTasks(): accountFilter:{}", accountFilter);
         if (accountFilter.isPresent()) {
             return findDirectParentsOfBlockedTasksWithAccountFilter(lastId, accountFilter.get());
@@ -528,8 +533,9 @@ public class DatabaseSessionStoreManager
 
     @DigdagTimed(value = "dssm_", category = "db", appendMethodName = true)
     @Override
-    public int trySetRetryWaitingToReady(Optional<String> accountFilter)
+    public int trySetRetryWaitingToReady(AccountRouting accountRouting)
     {
+        Optional<String> accountFilter = accountRouting.getFilterSQLOpt();
         logger.info("YY trySetRetryWaitingToReady: {}", accountFilter);
         if (accountFilter.isPresent()) {
             return autoCommit((handle, dao) -> dao.trySetRetryWaitingToReadyWithAccountFilter(accountFilter.get()));
