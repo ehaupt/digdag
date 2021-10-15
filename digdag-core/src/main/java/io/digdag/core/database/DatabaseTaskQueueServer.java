@@ -305,7 +305,6 @@ public class DatabaseTaskQueueServer
     public List<TaskQueueLock> lockSharedAgentTasks(int count, String agentId, int lockSeconds, long maxSleepMillis, AccountRouting accountRouting)
     {
         Optional<String> accountFilter = accountRouting.getFilterSQLOpt();
-        logger.debug("YY lockSharedAgentTasks(): accountFilter:{}", accountFilter);
         List<Integer> siteIds = autoCommit((handle, dao) ->
                 accountFilter.isPresent()?
                         dao.getActiveSiteIdListWithAccountFilter(accountFilter.get()):
