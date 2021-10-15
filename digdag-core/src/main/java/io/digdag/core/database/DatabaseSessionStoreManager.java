@@ -814,6 +814,13 @@ public class DatabaseSessionStoreManager
         }
     }
 
+    //Only for test purpose
+    @VisibleForTesting
+    public TaskControlStore createTaskControlStore(Handle handle)
+    {
+        return new DatabaseTaskControlStore(handle);
+    }
+
     private StoredTask getTaskById(Handle handle, long taskId)
         throws ResourceNotFoundException
     {

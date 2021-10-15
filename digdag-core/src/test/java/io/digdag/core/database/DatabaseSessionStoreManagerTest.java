@@ -3,6 +3,7 @@ package io.digdag.core.database;
 import java.util.*;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.stream.Collectors;
 
 import io.digdag.core.acroute.DefaultAccountRoutingFactory;
 import io.digdag.spi.AccountRouting;
@@ -17,6 +18,8 @@ import io.digdag.core.workflow.*;
 import io.digdag.spi.ScheduleTime;
 import io.digdag.spi.TaskReport;
 import io.digdag.client.config.Config;
+import org.skife.jdbi.v2.Handle;
+
 import static io.digdag.core.database.DatabaseTestingUtils.*;
 import static io.digdag.client.config.ConfigUtils.newConfig;
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -616,6 +619,32 @@ public class DatabaseSessionStoreManagerTest
     public void testAccountRouting_trySetRetryWaitingToReady()
             throws Exception
     {
+        testAccountRouting_trySetRetryWaitingToReady(this.accountRoutingDisabled, 1);
+        testAccountRouting_trySetRetryWaitingToReady(this.accountRoutingInclude0, 1);
+        testAccountRouting_trySetRetryWaitingToReady(this.accountRoutingExclude0, 0);
+    }
 
+    private void testAccountRouting_trySetRetryWaitingToReady(AccountRouting accountRouting, int expected)
+            throws Exception
+    {
+        DatabaseSessionStoreManager dssm = (DatabaseSessionStoreManager) manager;
+        final ConfigMapper cfm = dssm.configMapper;
+        factory.begin(() -> {
+            Handle handle = factory.get().getHandle(cfm);
+
+            // Get target task ID.
+            List<Map<String, Object>> tasks = handle.createQuery("select * from tasks where task_type = 0 order by id limit 1").list();
+            List<Long> taskIds = tasks.stream().map( (r) -> Long.parseLong(r.get("id").toString())).collect(Collectors.toList());
+            assertThat(taskIds.size(), is(1));
+
+            // Set task state to retry waiting
+            dssm.createTaskControlStore(handle).setRetryWaitingState(taskIds.get(0), TaskStateCode.BLOCKED, TaskStateCode.RETRY_WAITING, -10, createConfig(), Optional.absent());
+
+            // Test target method
+            int updated = dssm.trySetRetryWaitingToReady(accountRouting);
+            assertThat(updated, is(expected));
+
+            handle.rollback(); // Rollback for next test.
+        });
     }
 }
